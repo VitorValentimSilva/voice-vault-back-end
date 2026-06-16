@@ -7,12 +7,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: [
-      'dist/**',
-      'coverage/**',
-      'src/generated/**',
-      'eslint.config.mjs',
-    ],
+    ignores: ['./dist/**', './coverage/**', './src/generated/**', './eslint.config.mjs'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -40,6 +35,12 @@ export default tseslint.config(
       'simple-import-sort/imports': 'error',
       'simple-import-sort/exports': 'error',
       'unused-imports/no-unused-imports': 'error',
+      'prettier/prettier': [
+        'error',
+        {
+          trailingComma: 'es5',
+        },
+      ],
     },
-  },
+  }
 );
