@@ -6,13 +6,14 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { ZodValidationPipe } from 'nestjs-zod';
 
-import { AppModule } from '@/app.module.js';
+import { AppModule } from '@/app.module';
 import { setupPosthog } from '@/bootstrap/posthog.bootstrap';
 import { setupSwagger } from '@/bootstrap/swagger.bootstrap';
 
 export async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
+    rawBody: true,
   });
 
   app.enableShutdownHooks();
@@ -36,7 +37,7 @@ export async function bootstrap(): Promise<void> {
   setupPosthog(app);
   setupSwagger(app);
 
-  const port = env.PORT ?? 3000;
+  const port = env.PORT ?? 5000;
 
   await app.listen(port);
 
