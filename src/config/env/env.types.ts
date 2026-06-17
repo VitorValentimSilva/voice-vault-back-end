@@ -13,4 +13,5 @@ export interface Env {
   QSTASH_TOKEN: string;
   QSTASH_CURRENT_SIGNING_KEY: string;
   QSTASH_NEXT_SIGNING_KEY: string;
+  CLERK_WEBHOOK_SECRET: string;
 }

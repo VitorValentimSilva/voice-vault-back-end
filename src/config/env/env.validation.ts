@@ -15,4 +15,5 @@ export const envValidationSchema = Joi.object({
   QSTASH_TOKEN: Joi.string().required(),
   QSTASH_CURRENT_SIGNING_KEY: Joi.string().required(),
   QSTASH_NEXT_SIGNING_KEY: Joi.string().required(),
+  CLERK_WEBHOOK_SECRET: Joi.string().required(),
 });
