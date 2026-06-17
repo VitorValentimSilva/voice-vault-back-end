@@ -13,12 +13,16 @@ export class EnvService {
     });
   }
 
-  get isProduction() {
-    return this.nodeEnv === 'production';
-  }
-
   get isDevelopment() {
     return this.nodeEnv === 'development';
+  }
+
+  get isTest() {
+    return this.nodeEnv === 'test';
+  }
+
+  get isProduction() {
+    return this.nodeEnv === 'production';
   }
 
   get port() {
@@ -85,5 +89,9 @@ export class EnvService {
     return this.configService.get('QSTASH_NEXT_SIGNING_KEY', {
       infer: true,
     });
+  }
+
+  get clerkWebhookSecret(): string {
+    return this.configService.getOrThrow<string>('CLERK_WEBHOOK_SECRET');
   }
 }
