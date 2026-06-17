@@ -6,12 +6,12 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { ZodValidationPipe } from 'nestjs-zod';
 
-import { AppModule } from '@/app.module';
 import { setupPosthog } from '@/bootstrap/posthog.bootstrap';
 import { setupSwagger } from '@/bootstrap/swagger.bootstrap';
+import { AppConfigModule } from '@/config/config.module';
 
 export async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create(AppConfigModule, {
     bufferLogs: true,
     rawBody: true,
   });
