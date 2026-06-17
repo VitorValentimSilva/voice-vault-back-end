@@ -5,7 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 
 import { EnvModule } from '@/config/env/env.module';
 import { envValidationSchema } from '@/config/env/env.validation';
-import { PrismaModule } from '@/modules/prisma/prisma.module';
+import { PrismaModule } from '@/config/prisma/prisma.module';
 import { ClerkWebhookModule } from '@/modules/webhooks/clerk-webhook/clerk-webhook.module';
 
 const isProd = process.env.NODE_ENV === 'production';

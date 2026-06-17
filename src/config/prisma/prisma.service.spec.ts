@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
 
-import { PrismaService } from '@/modules/prisma/prisma.service';
+import { PrismaService } from '@/config/prisma/prisma.service';
 
 describe('PrismaService', () => {
   let service: PrismaService;
