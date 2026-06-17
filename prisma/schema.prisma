@@ -8,9 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  clerkUserId   String   @unique
+  id              String   @id
+  email           String   @unique
+  name            String?
+  avatarUrl       String?
+  currentProvider String?  
+  lastSignInAt    DateTime?
+  banned          Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  @@map("users")
 }
