@@ -5,10 +5,8 @@
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
   },
-  "eslint.validate": [
-    "typescript"
-  ],
+  "eslint.validate": ["typescript"],
   "commentTranslate.source": "Google",
   "js/ts.suggestionActions.enabled": false,
-  "js/ts.preferences.importModuleSpecifier": "non-relative",
+  "js/ts.preferences.importModuleSpecifier": "non-relative"
 }
