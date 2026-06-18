@@ -1,6 +1,11 @@
+import { Pool } from '@neondatabase/serverless';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
+import * as Sentry from '@sentry/nestjs';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+
+import { NeonPoolClient } from '@/config/prisma/dto/prisma.dto';
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
@@ -8,18 +13,46 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   readonly user: PrismaClient['user'];
 
-  constructor() {
-    const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
-    this._prisma = new PrismaClient({ adapter });
+  constructor(
+    @InjectPinoLogger(PrismaService.name)
+    private readonly logger: PinoLogger
+  ) {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const adapter = new PrismaNeon(pool as any as NeonPoolClient);
+
+    this._prisma = new PrismaClient({
+      adapter,
+      log:
+        process.env.NODE_ENV === 'development'
+          ? ['query', 'info', 'warn', 'error']
+          : ['warn', 'error'],
+    });
 
     this.user = this._prisma.user;
   }
 
   async onModuleInit() {
-    await this._prisma.$connect();
+    try {
+      this.logger.info('Connecting to the Neon database...');
+
+      await this._prisma.$connect();
+
+      this.logger.info('Connection to the database established successfully.');
+    } catch (error) {
+      this.logger.error({ error }, 'Failed to connect to the database');
+
+      Sentry.captureException(error, {
+        tags: {
+          context: 'PrismaService',
+          lifecycle: 'onModuleInit',
+        },
+      });
+    }
   }
 
   async onModuleDestroy() {
+    this.logger.info('Disconnecting from the database...');
+
     await this._prisma.$disconnect();
   }
 }
