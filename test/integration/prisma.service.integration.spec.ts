@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as Sentry from '@sentry/nestjs';
 import { getLoggerToken } from 'nestjs-pino';
@@ -11,7 +11,7 @@ jest.mock('@sentry/nestjs', () => ({
 }));
 
 describe('PrismaService (Integration)', () => {
-  let prismaService: PrismaService;
+  let service: PrismaService;
 
   const loggerMock = {
     info: jest.fn(),
@@ -39,27 +39,23 @@ describe('PrismaService (Integration)', () => {
       ],
     }).compile();
 
-    prismaService = module.get(PrismaService);
-  });
-
-  beforeEach(() => {
-    jest.clearAllMocks();
+    service = module.get(PrismaService);
   });
 
   afterAll(async () => {
-    if (prismaService) {
-      await prismaService.onModuleDestroy();
+    if (service) {
+      await service.onModuleDestroy();
     }
   });
 
   it('should be defined', () => {
-    expect(prismaService).toBeDefined();
-    expect(prismaService.user).toBeDefined();
+    expect(service).toBeDefined();
+    expect(service.user).toBeDefined();
   });
 
   describe('onModuleInit', () => {
     it('should connect successfully on first attempt', async () => {
-      await prismaService.onModuleInit();
+      await service.onModuleInit();
 
       expect(loggerMock.info).toHaveBeenCalledWith('Connecting to the Neon database...');
 
@@ -135,9 +131,9 @@ describe('PrismaService (Integration)', () => {
 
   describe('onModuleDestroy', () => {
     it('should disconnect from database', async () => {
-      const disconnectSpy = jest.spyOn(prismaService.prismaClient, '$disconnect');
+      const disconnectSpy = jest.spyOn(service.prismaClient, '$disconnect');
 
-      await prismaService.onModuleDestroy();
+      await service.onModuleDestroy();
 
       expect(disconnectSpy).toHaveBeenCalledTimes(1);
 
