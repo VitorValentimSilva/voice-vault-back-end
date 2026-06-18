@@ -1,4 +1,3 @@
-import { Pool } from '@neondatabase/serverless';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
@@ -6,7 +5,6 @@ import * as Sentry from '@sentry/nestjs';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 import { EnvService } from '@/config/envs/env.service';
-import { NeonPoolClient } from '@/config/prisma/dto/prisma.dto';
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
@@ -20,40 +18,55 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
     private readonly envService: EnvService
   ) {
-    const pool = new Pool({ connectionString: this.envService.databaseUrl });
-    const adapter = new PrismaNeon(pool as any as NeonPoolClient);
+    const adapter = new PrismaNeon({
+      connectionString: this.envService.databaseUrl,
+    });
 
     this._prisma = new PrismaClient({
       adapter,
-      log:
-        this.envService.nodeEnv === 'development'
-          ? ['query', 'info', 'warn', 'error']
-          : ['warn', 'error'],
+      log: this.envService.isDevelopment ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
     });
 
     this.user = this._prisma.user;
   }
 
-  async onModuleInit() {
-    try {
-      this.logger.info('Connecting to the Neon database...');
+  async onModuleInit(): Promise<void> {
+    this.logger.info('Connecting to the Neon database...');
 
-      await this._prisma.$connect();
+    const maxAttempts = 5;
 
-      this.logger.info('Connection to the database established successfully.');
-    } catch (error) {
-      this.logger.error({ error }, 'Failed to connect to the database');
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this._prisma.$connect();
 
-      Sentry.captureException(error, {
-        tags: {
-          context: 'PrismaService',
-          lifecycle: 'onModuleInit',
-        },
-      });
+        this.logger.info({ attempt }, 'Connection to the database established successfully.');
+
+        return;
+      } catch (error) {
+        this.logger.warn({ attempt, error }, 'Database connection attempt failed.');
+
+        if (attempt === maxAttempts) {
+          this.logger.error(
+            { error },
+            'Failed to connect to the database after all retry attempts.'
+          );
+
+          Sentry.captureException(error, {
+            tags: {
+              context: 'PrismaService',
+              lifecycle: 'onModuleInit',
+            },
+          });
+
+          throw error;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      }
     }
   }
 
-  async onModuleDestroy() {
+  async onModuleDestroy(): Promise<void> {
     this.logger.info('Disconnecting from the database...');
 
     await this._prisma.$disconnect();
