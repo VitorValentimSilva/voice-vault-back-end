@@ -1,0 +1,61 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+
+import { RATE_LIMIT_CONFIGS } from '@/config/rate-limit/constant/rate-limit.constant';
+import { RateLimitContext, RateLimitResult } from '@/config/rate-limit/dto/rate-limit.dto';
+import { REDIS_CLIENT } from '@/config/redis/constant/redis.constant';
+
+@Injectable()
+export class RateLimitService {
+  private readonly limiters = new Map<RateLimitContext, Ratelimit>();
+
+  constructor(
+    @Inject(REDIS_CLIENT)
+    private readonly redis: Redis,
+
+    @InjectPinoLogger(RateLimitService.name)
+    private readonly logger: PinoLogger
+  ) {
+    for (const [context, config] of Object.entries(RATE_LIMIT_CONFIGS) as [
+      RateLimitContext,
+      (typeof RATE_LIMIT_CONFIGS)[RateLimitContext],
+    ][]) {
+      this.limiters.set(
+        context,
+        new Ratelimit({
+          redis: this.redis,
+          limiter: config.limiter,
+          analytics: config.analytics,
+          prefix: config.prefix,
+        })
+      );
+
+      this.logger.debug({ context }, 'Rate limit context initialized');
+    }
+  }
+
+  async limit(context: RateLimitContext, identifier: string): Promise<RateLimitResult> {
+    if (!identifier.trim()) {
+      throw new Error('identifier must not be empty');
+    }
+
+    const limiter = this.limiters.get(context);
+
+    if (!limiter) {
+      this.logger.error({ context }, 'Rate limit context not found');
+
+      throw new Error(`Rate limit context not found: ${context}`);
+    }
+
+    const result = await limiter.limit(identifier);
+
+    return {
+      success: result.success,
+      limit: result.limit,
+      remaining: result.remaining,
+      reset: result.reset,
+    };
+  }
+}

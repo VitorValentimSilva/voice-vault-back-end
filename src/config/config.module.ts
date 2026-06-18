@@ -6,6 +6,8 @@ import { LoggerModule } from 'nestjs-pino';
 import { EnvSchema } from '@/config/envs/dto/env.dto';
 import { EnvModule } from '@/config/envs/env.module';
 import { PrismaModule } from '@/config/prisma/prisma.module';
+import { RateLimitModule } from '@/config/rate-limit/rate-limit.module';
+import { RedisModule } from '@/config/redis/redis.module';
 import { ClerkWebhookModule } from '@/modules/webhooks/clerk-webhook/clerk-webhook.module';
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -48,6 +50,8 @@ const isProd = process.env.NODE_ENV === 'production';
     SentryModule.forRoot(),
     EnvModule,
     PrismaModule,
+    RedisModule,
+    RateLimitModule,
     ClerkWebhookModule,
   ],
 })
