@@ -13,17 +13,15 @@ jest.mock('@sentry/nestjs', () => ({
 describe('PrismaService (Integration)', () => {
   let prismaService: PrismaService;
 
-  const loggerMock: {
-    info: jest.Mock;
-    error: jest.Mock;
-  } = {
+  const loggerMock = {
     info: jest.fn(),
+    warn: jest.fn(),
     error: jest.fn(),
   };
 
   const envServiceMock = {
-    databaseUrl: process.env.DATABASE_URL!,
-    nodeEnv: 'test',
+    databaseUrl: process.env.DATABASE_URL ?? 'postgresql://localhost:5432/test',
+    isDevelopment: false,
   } as EnvService;
 
   beforeAll(async () => {
@@ -41,7 +39,7 @@ describe('PrismaService (Integration)', () => {
       ],
     }).compile();
 
-    prismaService = module.get<PrismaService>(PrismaService);
+    prismaService = module.get(PrismaService);
   });
 
   beforeEach(() => {
@@ -60,65 +58,88 @@ describe('PrismaService (Integration)', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should successfully connect to the database', async () => {
+    it('should connect successfully on first attempt', async () => {
       await prismaService.onModuleInit();
 
       expect(loggerMock.info).toHaveBeenCalledWith('Connecting to the Neon database...');
 
       expect(loggerMock.info).toHaveBeenCalledWith(
+        { attempt: 1 },
         'Connection to the database established successfully.'
       );
+
+      expect(loggerMock.warn).not.toHaveBeenCalled();
+      expect(loggerMock.error).not.toHaveBeenCalled();
+      expect(Sentry.captureException).not.toHaveBeenCalled();
     });
 
-    it('should catch error and report to Sentry if connection fails', async () => {
-      const moduleFail: TestingModule = await Test.createTestingModule({
-        providers: [
-          PrismaService,
+    it('should retry 5 times, report to Sentry and rethrow the error', async () => {
+      jest.useFakeTimers();
+
+      try {
+        const moduleFail: TestingModule = await Test.createTestingModule({
+          providers: [
+            PrismaService,
+            {
+              provide: getLoggerToken(PrismaService.name),
+              useValue: loggerMock,
+            },
+            {
+              provide: EnvService,
+              useValue: envServiceMock,
+            },
+          ],
+        }).compile();
+
+        const failingPrismaService = moduleFail.get(PrismaService);
+
+        const dbError = new Error('Neon Connection Timeout');
+
+        const connectSpy = jest
+          .spyOn(failingPrismaService.prismaClient, '$connect')
+          .mockRejectedValue(dbError);
+
+        const initPromise = expect(failingPrismaService.onModuleInit()).rejects.toThrow(
+          'Neon Connection Timeout'
+        );
+
+        await jest.runAllTimersAsync();
+
+        await initPromise;
+
+        expect(connectSpy).toHaveBeenCalledTimes(5);
+
+        expect(loggerMock.warn).toHaveBeenCalledTimes(5);
+
+        expect(loggerMock.error).toHaveBeenCalledWith(
           {
-            provide: getLoggerToken(PrismaService.name),
-            useValue: loggerMock,
+            error: dbError,
           },
-          {
-            provide: EnvService,
-            useValue: envServiceMock,
-          },
-        ],
-      }).compile();
+          'Failed to connect to the database after all retry attempts.'
+        );
 
-      const failingPrismaService = moduleFail.get<PrismaService>(PrismaService);
-
-      const dbError = new Error('Neon Connection Timeout');
-
-      jest.spyOn(failingPrismaService['_prisma'], '$connect').mockRejectedValueOnce(dbError);
-
-      await failingPrismaService.onModuleInit();
-
-      expect(loggerMock.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          error: dbError,
-        }),
-        'Failed to connect to the database'
-      );
-
-      expect(Sentry.captureException).toHaveBeenCalledWith(
-        dbError,
-        expect.objectContaining({
-          tags: {
-            context: 'PrismaService',
-            lifecycle: 'onModuleInit',
-          },
-        })
-      );
+        expect(Sentry.captureException).toHaveBeenCalledWith(
+          dbError,
+          expect.objectContaining({
+            tags: {
+              context: 'PrismaService',
+              lifecycle: 'onModuleInit',
+            },
+          })
+        );
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 
   describe('onModuleDestroy', () => {
-    it('should disconnect from the database', async () => {
-      const disconnectSpy = jest.spyOn(prismaService['_prisma'], '$disconnect');
+    it('should disconnect from database', async () => {
+      const disconnectSpy = jest.spyOn(prismaService.prismaClient, '$disconnect');
 
       await prismaService.onModuleDestroy();
 
-      expect(disconnectSpy).toHaveBeenCalled();
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
 
       expect(loggerMock.info).toHaveBeenCalledWith('Disconnecting from the database...');
     });
