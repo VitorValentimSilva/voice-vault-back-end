@@ -3,8 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { LoggerModule } from 'nestjs-pino';
 
-import { EnvModule } from '@/config/env/env.module';
-import { envValidationSchema } from '@/config/env/env.validation';
+import { EnvSchema } from '@/config/envs/dto/env.dto';
+import { EnvModule } from '@/config/envs/env.module';
 import { PrismaModule } from '@/config/prisma/prisma.module';
 import { ClerkWebhookModule } from '@/modules/webhooks/clerk-webhook/clerk-webhook.module';
 
@@ -16,7 +16,7 @@ const isProd = process.env.NODE_ENV === 'production';
       isGlobal: true,
       cache: true,
       expandVariables: true,
-      validationSchema: envValidationSchema,
+      validationSchema: EnvSchema,
     }),
     LoggerModule.forRoot({
       pinoHttp: {
