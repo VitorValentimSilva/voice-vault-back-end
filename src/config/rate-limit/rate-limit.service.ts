@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -49,13 +50,33 @@ export class RateLimitService {
       throw new Error(`Rate limit context not found: ${context}`);
     }
 
-    const result = await limiter.limit(identifier);
+    try {
+      const result = await limiter.limit(identifier);
 
-    return {
-      success: result.success,
-      limit: result.limit,
-      remaining: result.remaining,
-      reset: result.reset,
-    };
+      return {
+        success: result.success,
+        limit: result.limit,
+        remaining: result.remaining,
+        reset: result.reset,
+      };
+    } catch (error) {
+      this.logger.error(
+        {
+          context,
+          identifier,
+          error,
+        },
+        'Rate limit execution failed'
+      );
+
+      Sentry.captureException(error, {
+        tags: {
+          context: 'RateLimitService',
+          rateLimitContext: context,
+        },
+      });
+
+      throw error;
+    }
   }
 }
