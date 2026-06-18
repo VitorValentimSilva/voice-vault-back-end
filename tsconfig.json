@@ -24,7 +24,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/bootstrap/*": ["./src/bootstrap/*"],
-      "@/config/*": ["./src/config/*"]
+      "@/config/*": ["./src/config/*"],
+      "@/common/*": ["./src/common/*"],
     }
   }
 }
