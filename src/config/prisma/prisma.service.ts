@@ -17,6 +17,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @InjectPinoLogger(PrismaService.name)
     private readonly logger: PinoLogger,
+
     private readonly envService: EnvService
   ) {
     const pool = new Pool({ connectionString: this.envService.databaseUrl });
