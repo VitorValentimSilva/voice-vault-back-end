@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
+import { EnvService } from '@/config/envs/env.service';
 import { NeonPoolClient } from '@/config/prisma/dto/prisma.dto';
 
 @Injectable()
@@ -15,15 +16,16 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @InjectPinoLogger(PrismaService.name)
-    private readonly logger: PinoLogger
+    private readonly logger: PinoLogger,
+    private readonly envService: EnvService
   ) {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const pool = new Pool({ connectionString: this.envService.databaseUrl });
     const adapter = new PrismaNeon(pool as any as NeonPoolClient);
 
     this._prisma = new PrismaClient({
       adapter,
       log:
-        process.env.NODE_ENV === 'development'
+        this.envService.nodeEnv === 'development'
           ? ['query', 'info', 'warn', 'error']
           : ['warn', 'error'],
     });
