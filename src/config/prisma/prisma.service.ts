@@ -8,7 +8,7 @@ import { EnvService } from '@/config/envs/env.service';
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
-  private readonly _prisma: PrismaClient;
+  protected readonly prisma: PrismaClient;
 
   readonly user: PrismaClient['user'];
 
@@ -22,12 +22,16 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       connectionString: this.envService.databaseUrl,
     });
 
-    this._prisma = new PrismaClient({
+    this.prisma = new PrismaClient({
       adapter,
       log: this.envService.isDevelopment ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
     });
 
-    this.user = this._prisma.user;
+    this.user = this.prisma.user;
+  }
+
+  get prismaClient(): PrismaClient {
+    return this.prisma;
   }
 
   async onModuleInit(): Promise<void> {
@@ -37,7 +41,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        await this._prisma.$connect();
+        await this.prisma.$connect();
 
         this.logger.info({ attempt }, 'Connection to the database established successfully.');
 
@@ -69,6 +73,6 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     this.logger.info('Disconnecting from the database...');
 
-    await this._prisma.$disconnect();
+    await this.prisma.$disconnect();
   }
 }
