@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Redis } from '@upstash/redis';
 import { getLoggerToken } from 'nestjs-pino';
 
+import { AppException } from '@/common/errors/app.exception';
+import { ERROR_CODE } from '@/common/errors/code/error.code';
 import { REDIS_CLIENT } from '@/config/redis/constant/redis.constant';
 import { RedisService } from '@/config/redis/redis.service';
 
@@ -49,7 +51,6 @@ describe('RedisService', () => {
       const result = await service.get<{ id: number }>('user:1');
 
       expect(result).toEqual({ id: 1 });
-
       expect(redisMock.get).toHaveBeenCalledWith('user:1');
     });
   });
@@ -67,9 +68,23 @@ describe('RedisService', () => {
       expect(redisMock.set).toHaveBeenCalledWith('key', 'value', { ex: 60 });
     });
 
-    it('should throw when ttl is invalid', async () => {
-      await expect(service.set('key', 'value', 0)).rejects.toThrow(
-        'ttlSeconds must be greater than zero'
+    it('should throw AppException REDIS_INVALID_TTL_DURATION when ttl is zero', async () => {
+      const rejectPromise = service.set('key', 'value', 0);
+
+      await expect(rejectPromise).rejects.toThrow(AppException);
+      await expect(rejectPromise).rejects.toHaveProperty(
+        'code',
+        ERROR_CODE.REDIS_INVALID_TTL_DURATION
+      );
+    });
+
+    it('should throw AppException REDIS_INVALID_TTL_DURATION when ttl is negative', async () => {
+      const rejectPromise = service.set('key', 'value', -10);
+
+      await expect(rejectPromise).rejects.toThrow(AppException);
+      await expect(rejectPromise).rejects.toHaveProperty(
+        'code',
+        ERROR_CODE.REDIS_INVALID_TTL_DURATION
       );
     });
   });
@@ -121,8 +136,24 @@ describe('RedisService', () => {
       expect(result).toBe(1);
     });
 
-    it('should throw when seconds is invalid', async () => {
-      await expect(service.expire('key', 0)).rejects.toThrow('seconds must be greater than zero');
+    it('should throw AppException REDIS_INVALID_SECONDS_DURATION when seconds is zero', async () => {
+      const rejectPromise = service.expire('key', 0);
+
+      await expect(rejectPromise).rejects.toThrow(AppException);
+      await expect(rejectPromise).rejects.toHaveProperty(
+        'code',
+        ERROR_CODE.REDIS_INVALID_SECONDS_DURATION
+      );
+    });
+
+    it('should throw AppException REDIS_INVALID_SECONDS_DURATION when seconds is negative', async () => {
+      const rejectPromise = service.expire('key', -5);
+
+      await expect(rejectPromise).rejects.toThrow(AppException);
+      await expect(rejectPromise).rejects.toHaveProperty(
+        'code',
+        ERROR_CODE.REDIS_INVALID_SECONDS_DURATION
+      );
     });
   });
 
@@ -143,7 +174,6 @@ describe('RedisService', () => {
       const result = await service.ping();
 
       expect(result).toBe(false);
-
       expect(loggerMock.warn).toHaveBeenCalledWith({ error }, 'Redis health check failed');
     });
   });
