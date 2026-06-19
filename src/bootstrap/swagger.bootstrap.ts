@@ -5,7 +5,7 @@ export function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
     .setTitle('Voice Vault API')
     .setDescription('Voice Vault API')
-    .setVersion('1.0')
+    .setVersion('1.0.0')
     .addTag('voice-vault')
     .build();
 
